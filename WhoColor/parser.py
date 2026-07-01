@@ -26,6 +26,10 @@ class WikiMarkupParser(object):
 
         # Saves whether there is currently an open span tag
         self._open_span = False
+        # Saves whether the parser is currently inside <ref>...</ref> content.
+        # Templates there (typically citation templates) are wrapped in a single
+        # span so the rendered reference stays attributable. See __update_ref_state.
+        self._in_ref = False
         # Array that holds the starting positions of blocks (special elements) we already jumped into
         self._jumped_elems = set()
 
@@ -128,6 +132,24 @@ class WikiMarkupParser(object):
                                        format(token['class_name'], self._token_index))
             self._open_span = True
 
+    def __update_ref_state(self, elem_text, elem_start):
+        """
+        Track whether the parser is inside <ref>...</ref> content, so citation
+        templates there can be wrapped in a span (see __parse_wiki_text).
+
+        The 'General HTML tag' markup matches '<ref' and '</ref' - it also matches
+        the '<ref' prefix of '<references'. A real opening ref tag is confirmed by
+        requiring whitespace or '>' right after 'ref', and self-closing tags
+        ('<ref name="x" />') are excluded because they wrap no content.
+        """
+        if elem_text == '</ref':
+            self._in_ref = False
+        elif elem_text == '<ref':
+            tag_end = self.wiki_text.find('>', elem_start)
+            tag = self.wiki_text[elem_start:tag_end + 1] if tag_end != -1 else ''
+            if re.match(r'<ref[\s>]', tag) and not tag.rstrip().endswith('/>'):
+                self._in_ref = True
+
     def __parse_wiki_text(self, add_spans=True, special_elem=None, no_jump=False):
         """
         There are 3 possible calls of this method in this algorithm.
@@ -169,14 +191,30 @@ class WikiMarkupParser(object):
                     # Or token itself is a start of special markup
                     self._jumped_elems.add(next_special_elem['start'])
 
+                    elem_start = next_special_elem['start']
+                    elem_text = self.wiki_text[elem_start:elem_start + next_special_elem['start_len']]
+
+                    # A template inside <ref> content is normally no_spans, which
+                    # leaves the rendered citation unattributed. Wrap the whole
+                    # template call in one span instead: spans inside template
+                    # arguments would corrupt rendering, but a span around the
+                    # entire call survives it and lands in the reference list.
+                    no_spans = next_special_elem['no_spans']
+                    if elem_text == '{{' and self._in_ref:
+                        no_spans = False
+
                     if add_spans:
                         # if no_spans=False, this special markup will have one span around with editor of first token
-                        self.__add_spans(self.token, new_span=not next_special_elem['no_spans'])
+                        self.__add_spans(self.token, new_span=not no_spans)
 
                     # NOTE: add_spans=False => no spans will added inside special markups
                     self.__parse_wiki_text(add_spans=False,
                                            special_elem=next_special_elem,
                                            no_jump=next_special_elem['no_jump'])
+
+                    # Enter/leave <ref> context after the tag itself is emitted, so
+                    # the following template (the citation) sees the updated state.
+                    self.__update_ref_state(elem_text, elem_start)
                     if special_elem:
                         # _wiki_text_pos is updated, we have to update the end position of current special markup
                         special_elem_end = self.__get_special_elem_end(special_elem)
