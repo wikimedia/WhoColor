@@ -56,6 +56,8 @@ def prepare_test_data(save_to_file, test_articles=None):
                                 'tokens': tokens,
                                 'biggest_conflict_score': biggest_conflict_score,
                                 'rev_text': rev_data['rev_text']}
+            with open(save_to_file, 'wb') as f:
+                pickle.dump(test_data, f)
         print(title, ' ended ...')
     with open(save_to_file, 'wb') as f:
         pickle.dump(test_data, f)

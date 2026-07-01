@@ -6,8 +6,32 @@
 """
 import requests
 import hashlib
+import time
 from dateutil import parser
 from datetime import datetime
+
+
+USER_AGENT = 'WhoColor/1.0.1 (https://github.com/wikimedia/WhoColor)'
+WIKIWHO_API_BASE = 'https://wikiwho-api.wmcloud.org'
+REQUEST_TIMEOUT = 120
+REQUEST_ATTEMPTS = 5
+
+
+def _request_json(method, **kwargs):
+    headers = kwargs.pop('headers', {})
+    headers.setdefault('User-Agent', USER_AGENT)
+    kwargs.setdefault('timeout', REQUEST_TIMEOUT)
+    last_error = None
+    for attempt in range(REQUEST_ATTEMPTS):
+        try:
+            response = method(headers=headers, **kwargs)
+            return response.json()
+        except (requests.RequestException, ValueError) as error:
+            last_error = error
+            if attempt + 1 == REQUEST_ATTEMPTS:
+                raise
+            time.sleep(2 ** attempt)
+    raise last_error
 
 
 class WikipediaRevText(object):
@@ -50,8 +74,7 @@ class WikipediaRevText(object):
         return data
 
     def _make_request(self, data):
-        response = requests.post(**data).json()
-        return response
+        return _request_json(requests.post, **data)
 
     def get_rev_wiki_text(self):
         """
@@ -117,8 +140,7 @@ class WikipediaUser(object):
         }
 
     def _make_request(self, data):
-        response = requests.post(**data).json()
-        return response
+        return _request_json(requests.post, **data)
 
     def get_editor_names(self, editor_ids, batch_size=50):
         """
@@ -163,7 +185,7 @@ class WikiWhoRevContent(object):
         self.language = language
 
     def _prepare_request(self, rev_ids=False):
-        ww_api_url = 'https://www.wikiwho.net/{}/api/v1.0.0-beta'.format(self.language)
+        ww_api_url = '{}/{}/api/v1.0.0-beta'.format(WIKIWHO_API_BASE, self.language)
         if rev_ids:
             if self.page_id:
                 url_params = 'page_id/{}'.format(self.page_id)
@@ -183,8 +205,7 @@ class WikiWhoRevContent(object):
                                'token_id': 'false', 'out': 'true', 'in': 'true'}}
 
     def _make_request(self, data):
-        response = requests.get(**data).json()
-        return response
+        return _request_json(requests.get, **data)
 
     def get_revisions_data(self):
         # get revisions-editors

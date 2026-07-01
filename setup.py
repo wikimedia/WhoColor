@@ -29,7 +29,7 @@ setup(
     long_description=long_description,
 
     # The project's main homepage.
-    url='https://github.com/wikiwho/whoCOLOR',
+    url='https://github.com/wikimedia/WhoColor',
 
     # Author details
     # author='The Python Packaging Authority',

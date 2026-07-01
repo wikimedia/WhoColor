@@ -10,7 +10,7 @@ class TestUtils(unittest.TestCase):
         ww_rev_content = WikiWhoRevContent(page_id=page_id, language=language)
         # test if request data is correct
         request_data = ww_rev_content._prepare_request()
-        data = {'url': 'https://www.wikiwho.net/{}/api/v1.0.0-beta/rev_content/page_id/{}/'.format(language, page_id),
+        data = {'url': 'https://wikiwho-api.wmcloud.org/{}/api/v1.0.0-beta/rev_content/page_id/{}/'.format(language, page_id),
                 'params': {'o_rev_id': 'true', 'editor': 'true', 'token_id': 'false', 'out': 'true', 'in': 'true'}}
         assert request_data == data
         # check if no errors
@@ -22,7 +22,7 @@ class TestUtils(unittest.TestCase):
         ww_rev_content = WikiWhoRevContent(page_title=page_title, language=language)
         # test if request data is correct
         request_data = ww_rev_content._prepare_request()
-        data = {'url': 'https://www.wikiwho.net/{}/api/v1.0.0-beta/rev_content/{}/'.format(language, page_title),
+        data = {'url': 'https://wikiwho-api.wmcloud.org/{}/api/v1.0.0-beta/rev_content/{}/'.format(language, page_title),
                 'params': {'o_rev_id': 'true', 'editor': 'true', 'token_id': 'false', 'out': 'true', 'in': 'true'}}
         assert request_data == data
         # check if no errors
@@ -36,7 +36,7 @@ class TestUtils(unittest.TestCase):
         ww_rev_content = WikiWhoRevContent(page_title=page_title, rev_id=rev_id, language=language)
         # test if request data is correct
         request_data = ww_rev_content._prepare_request()
-        data = {'url': 'https://www.wikiwho.net/{}/api/v1.0.0-beta/rev_content/{}/{}/'.format(language, page_title, rev_id),
+        data = {'url': 'https://wikiwho-api.wmcloud.org/{}/api/v1.0.0-beta/rev_content/{}/{}/'.format(language, page_title, rev_id),
                 'params': {'o_rev_id': 'true', 'editor': 'true', 'token_id': 'false', 'out': 'true', 'in': 'true'}}
         assert request_data == data
         # check if no errors

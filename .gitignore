@@ -1,3 +1,5 @@
 .idea/
 .cache
 *.pyc
+WhoColor/tests/test_data.p
+WhoColor/tests/who_color_test_data*.p
