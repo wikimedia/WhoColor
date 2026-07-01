@@ -18,10 +18,11 @@ SPECIAL_MARKUPS = (
         'no_spans': False,
         'no_jump': False,
     },
-    # External links
+    # External links.  A lone "[" can appear in citation metadata, so only
+    # treat it as link markup when it is followed by a URL-like target.
     {
         'type': 'block',
-        'start_regex': re.compile(r'\['),
+        'start_regex': re.compile(r'\[(?=(?:[a-z][a-z0-9+.-]*:|//))', re.IGNORECASE),
         'end_regex': re.compile(r'\]'),
         'no_spans': False,
         'no_jump': False,
