@@ -35,17 +35,35 @@ class TestParser(unittest.TestCase):
         self.assertIn('After', extended_wiki_text)
 
     def test_real_external_link_still_parses_as_single_markup_block(self):
-        wiki_text = 'Lead [https://example.org label] tail.'
+        cases = [
+            ('Lead [https://example.org label] tail.',
+             ['lead', '[', 'https', ':', '/', '/', 'example', '.', 'org',
+              'label', ']', 'tail', '.']),
+            ('Lead [mailto:user@example.org label] tail.',
+             ['lead', '[', 'mailto', ':', 'user', '@', 'example', '.', 'org',
+              'label', ']', 'tail', '.']),
+            ('Lead [//example.org label] tail.',
+             ['lead', '[', '/', '/', 'example', '.', 'org', 'label', ']', 'tail', '.']),
+        ]
+
+        for wiki_text, token_values in cases:
+            extended_wiki_text = self._parse(wiki_text, token_values)
+
+            self.assertIn('id="token-1"', extended_wiki_text)
+            self.assertNotIn('id="token-2"', extended_wiki_text)
+            self.assertIn('id="token-{}"'.format(len(token_values) - 2), extended_wiki_text)
+
+    def test_unclosed_external_link_start_does_not_disable_later_spans(self):
+        wiki_text = 'Lead [https://example.org tail after.'
         token_values = [
             'lead', '[', 'https', ':', '/', '/', 'example', '.', 'org',
-            'label', ']', 'tail', '.',
+            'tail', 'after', '.',
         ]
 
         extended_wiki_text = self._parse(wiki_text, token_values)
 
-        self.assertIn('id="token-1"', extended_wiki_text)
-        self.assertNotIn('id="token-2"', extended_wiki_text)
-        self.assertIn('id="token-11"', extended_wiki_text)
+        self.assertIn('id="token-9"', extended_wiki_text)
+        self.assertIn('id="token-10"', extended_wiki_text)
 
     def test_parser(self):
         test_data_file_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'test_data.p')

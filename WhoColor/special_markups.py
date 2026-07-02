@@ -24,6 +24,7 @@ SPECIAL_MARKUPS = (
         'type': 'block',
         'start_regex': re.compile(r'\[(?=(?:[a-z][a-z0-9+.-]*:|//))', re.IGNORECASE),
         'end_regex': re.compile(r'\]'),
+        'requires_end': True,
         'no_spans': False,
         'no_jump': False,
     },

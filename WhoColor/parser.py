@@ -57,27 +57,7 @@ class WikiMarkupParser(object):
                                                               self.token['class_name'],
                                                               1]  # token count
 
-    def __get_first_regex(self, regex):
-        # first_match = None
-        # for match in regex.finditer(self.wiki_text):
-        #     # search every time from the beginning of text
-        #     if (first_match is None or first_match.start() > match.start()) and match.start() >= self._wiki_text_pos:
-        #         # if match is first and starts after wiki text pos
-        #         first_match = match
-        # if first_match is not None:
-        #     print('__get_first_regex:', self._wiki_text_pos, self._jumped_elems, first_match.start(), first_match.group(), regex)
-        #     return {'str': first_match.group(), 'start': first_match.start()}
-        # return None
-        # NOTE this doesnt work because if regex contains positive look behind!
-        match = regex.search(self.wiki_text[self._wiki_text_pos:])
-        if match:
-            return {
-                'str': match.group(),
-                'start': self._wiki_text_pos + match.start()
-            }
-        return None
-
-    def __get_special_elem_end(self, special_elem):
+    def __find_special_elem_end(self, special_elem, start_pos=None):
         # Get end position of current special markup element
         end_pos_data = {}
         if special_elem.get('end_len') is not None and special_elem.get('end') is not None:
@@ -86,12 +66,42 @@ class WikiMarkupParser(object):
             end_pos_data['len'] = special_elem['end_len']
             end_pos_data['end'] = end_pos_data['start'] + end_pos_data['len']
         else:
-            end_regex = self.__get_first_regex(special_elem['end_regex'])
+            search_pos = self._wiki_text_pos if start_pos is None else start_pos
+            end_regex = special_elem['end_regex'].search(self.wiki_text[search_pos:])
             if end_regex is not None:
-                end_pos_data['start'] = end_regex['start']
-                end_pos_data['len'] = len(end_regex['str'])
+                end_pos_data['start'] = search_pos + end_regex.start()
+                end_pos_data['len'] = len(end_regex.group())
                 end_pos_data['end'] = end_pos_data['start'] + end_pos_data['len']
         return end_pos_data
+
+    def __get_special_elem_end(self, special_elem):
+        return self.__find_special_elem_end(special_elem)
+
+    def __get_first_special_markup(self, special_markup):
+        search_pos = self._wiki_text_pos
+        while search_pos < len(self.wiki_text):
+            found_markup = special_markup['start_regex'].search(self.wiki_text[search_pos:])
+            if found_markup is None:
+                return None
+            found_start = search_pos + found_markup.start()
+            found_str = found_markup.group()
+            next_search_pos = found_start + max(1, len(found_str))
+
+            if found_start in self._jumped_elems:
+                search_pos = next_search_pos
+                continue
+
+            if special_markup.get('requires_end'):
+                end_pos = self.__find_special_elem_end(special_markup, found_start + len(found_str))
+                if not end_pos:
+                    search_pos = next_search_pos
+                    continue
+
+            return {
+                'str': found_str,
+                'start': found_start
+            }
+        return None
 
     def __get_next_special_element(self):
         # if self.next_special_elem and self.next_special_elem['start'] > self._wiki_text_pos:
@@ -99,11 +109,10 @@ class WikiMarkupParser(object):
         # Get starting position of next special markup element
         next_ = {}
         for special_markup in SPECIAL_MARKUPS:
-            found_markup = self.__get_first_regex(special_markup['start_regex'])
+            found_markup = self.__get_first_special_markup(special_markup)
             if found_markup is not None and \
-               (not next_ or next_['start'] > found_markup['start']) and \
-               found_markup['start'] not in self._jumped_elems:
-                next_ = special_markup
+               (not next_ or next_['start'] > found_markup['start']):
+                next_ = dict(special_markup)
                 next_['start'] = found_markup['start']
                 next_['start_len'] = len(found_markup['str'])
                 if next_['type'] == 'single':
