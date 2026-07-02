@@ -1,8 +1,12 @@
 import unittest
-from WhoColor.utils import WikiWhoRevContent
+from WhoColor import __version__
+from WhoColor.utils import USER_AGENT, WikiWhoRevContent
 
 
 class TestUtils(unittest.TestCase):
+    def test_user_agent_uses_package_version(self):
+        self.assertEqual('WhoColor/{} (https://github.com/wikimedia/WhoColor)'.format(__version__), USER_AGENT)
+
     def test_wikiwho_from_page_id(self):
         # Page ID of 'Selfie'
         page_id = 38956275

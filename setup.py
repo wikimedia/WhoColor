@@ -9,6 +9,7 @@ from setuptools import setup, find_packages
 # To use a consistent encoding
 from codecs import open
 from os import path
+import re
 
 here = path.abspath(path.dirname(__file__))
 
@@ -16,13 +17,22 @@ here = path.abspath(path.dirname(__file__))
 with open(path.join(here, 'README.rst'), encoding='utf-8') as f:
     long_description = f.read()
 
+
+def read_version():
+    with open(path.join(here, 'WhoColor', '__init__.py'), encoding='utf-8') as f:
+        match = re.search(r"^__version__ = ['\"]([^'\"]+)['\"]", f.read(), re.M)
+    if not match:
+        raise RuntimeError('Unable to find package version.')
+    return match.group(1)
+
+
 setup(
     name='WhoColor',
 
     # Versions should comply with PEP440.  For a discussion on single-sourcing
     # the version across setup.py and the project code, see
     # https://packaging.python.org/en/latest/single_source_version.html
-    version='1.0.1',
+    version=read_version(),
 
     description='An algorithm to create an on-demand color-markup of the original authors of the text of any article '
                 'on the (english) Wikipedia.',

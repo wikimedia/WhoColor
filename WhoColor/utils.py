@@ -10,8 +10,9 @@ import time
 from dateutil import parser
 from datetime import datetime
 
+from . import __version__
 
-USER_AGENT = 'WhoColor/1.0.1 (https://github.com/wikimedia/WhoColor)'
+USER_AGENT = 'WhoColor/{} (https://github.com/wikimedia/WhoColor)'.format(__version__)
 WIKIWHO_API_BASE = 'https://wikiwho-api.wmcloud.org'
 REQUEST_TIMEOUT = 120
 REQUEST_ATTEMPTS = 5
