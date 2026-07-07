@@ -137,18 +137,22 @@ class WikiMarkupParser(object):
         Track whether the parser is inside <ref>...</ref> content, so citation
         templates there can be wrapped in a span (see __parse_wiki_text).
 
-        The 'General HTML tag' markup matches '<ref' and '</ref' - it also matches
-        the '<ref' prefix of '<references'. A real opening ref tag is confirmed by
-        requiring whitespace or '>' right after 'ref', and self-closing tags
-        ('<ref name="x" />') are excluded because they wrap no content.
+        The 'General HTML tag' markup matches '<ref' / '</ref' - these also match
+        the '<ref' / '</ref' prefix of '<references>' / '</references>'. Confirm a
+        real ref tag (opening or closing) by requiring whitespace or '>' right
+        after 'ref', which excludes '<references>' and '</references>'.
+        Self-closing tags ('<ref name="x" />') are also excluded from opening ref
+        context because they wrap no content.
         """
+        if elem_text not in ('<ref', '</ref'):
+            return
+        tag_end = self.wiki_text.find('>', elem_start)
+        tag = self.wiki_text[elem_start:tag_end + 1] if tag_end != -1 else ''
         if elem_text == '</ref':
-            self._in_ref = False
-        elif elem_text == '<ref':
-            tag_end = self.wiki_text.find('>', elem_start)
-            tag = self.wiki_text[elem_start:tag_end + 1] if tag_end != -1 else ''
-            if re.match(r'<ref[\s>]', tag) and not tag.rstrip().endswith('/>'):
-                self._in_ref = True
+            if re.match(r'</ref[\s>]', tag):
+                self._in_ref = False
+        elif re.match(r'<ref[\s>]', tag) and not tag.rstrip().endswith('/>'):
+            self._in_ref = True
 
     def __parse_wiki_text(self, add_spans=True, special_elem=None, no_jump=False):
         """

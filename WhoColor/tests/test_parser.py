@@ -102,6 +102,26 @@ class TestReferenceTemplateAttribution(unittest.TestCase):
 
         self.assertNotIn('token-editor-7', extended_wiki_text)
 
+    def test_references_close_tag_does_not_end_ref_context(self):
+        # '</references>' shares the '</ref' prefix matched by the general
+        # HTML-tag markup. It must not be mistaken for the '</ref>' that closes
+        # ref content; otherwise a citation template still inside the ref would
+        # lose its span. The template here sits after a stray '</references>'
+        # but before the real '</ref>', so it is only wrapped if ref context
+        # survived the '</references>'.
+        wiki_text = 'A.<ref>text </references> {{cite web |url=x |title=Y}}</ref> B.'
+        token_specs = [
+            'a', '.', '<', 'ref', '>', 'text', '<', '/', 'references', '>',
+            ('{{', '7'), ('cite', '7'), ('web', '7'), ('|', '7'), ('url', '7'), ('=', '7'), ('x', '7'),
+            ('|', '7'), ('title', '7'), ('=', '7'), ('y', '7'), ('}}', '7'),
+            '<', '/', 'ref', '>', 'b', '.',
+        ]
+
+        extended_wiki_text = self._parse(wiki_text, token_specs)
+
+        self.assertIn('token-editor-7', extended_wiki_text)
+        self.assertIn('{{cite web |url=x |title=Y}}</span>', extended_wiki_text)
+
     def test_nested_template_in_citation_is_wrapped_only_once(self):
         wiki_text = 'A<ref>{{cite |date={{dts|2020}}}}</ref>'
         token_specs = [
