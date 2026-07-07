@@ -26,12 +26,24 @@ def _request_json(method, **kwargs):
     for attempt in range(REQUEST_ATTEMPTS):
         try:
             response = method(headers=headers, **kwargs)
+            # Fail fast on HTTP errors instead of returning an error body that
+            # callers would only trip over later as a cryptic KeyError. Note the
+            # Wikipedia API reports logical errors as HTTP 200 with an 'error'
+            # key, so those still flow through to the callers' own handling.
+            response.raise_for_status()
             return response.json()
+        except requests.HTTPError as error:
+            # 4xx responses are caller/config errors that will not change on
+            # retry; only 429 (rate limited) is worth retrying among them.
+            status = error.response.status_code if error.response is not None else None
+            if status is not None and 400 <= status < 500 and status != 429:
+                raise
+            last_error = error
         except (requests.RequestException, ValueError) as error:
             last_error = error
-            if attempt + 1 == REQUEST_ATTEMPTS:
-                raise
-            time.sleep(2 ** attempt)
+        if attempt + 1 == REQUEST_ATTEMPTS:
+            raise last_error
+        time.sleep(2 ** attempt)
     raise last_error
 
 
