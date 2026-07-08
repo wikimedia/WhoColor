@@ -6,8 +6,45 @@
 """
 import requests
 import hashlib
+import time
 from dateutil import parser
 from datetime import datetime
+
+from . import __version__
+
+USER_AGENT = 'WhoColor/{} (https://github.com/wikimedia/WhoColor)'.format(__version__)
+WIKIWHO_API_BASE = 'https://wikiwho-api.wmcloud.org'
+REQUEST_TIMEOUT = 120
+REQUEST_ATTEMPTS = 5
+
+
+def _request_json(method, **kwargs):
+    headers = kwargs.pop('headers', {})
+    headers.setdefault('User-Agent', USER_AGENT)
+    kwargs.setdefault('timeout', REQUEST_TIMEOUT)
+    last_error = None
+    for attempt in range(REQUEST_ATTEMPTS):
+        try:
+            response = method(headers=headers, **kwargs)
+            # Fail fast on HTTP errors instead of returning an error body that
+            # callers would only trip over later as a cryptic KeyError. Note the
+            # Wikipedia API reports logical errors as HTTP 200 with an 'error'
+            # key, so those still flow through to the callers' own handling.
+            response.raise_for_status()
+            return response.json()
+        except requests.HTTPError as error:
+            # 4xx responses are caller/config errors that will not change on
+            # retry; only 429 (rate limited) is worth retrying among them.
+            status = error.response.status_code if error.response is not None else None
+            if status is not None and 400 <= status < 500 and status != 429:
+                raise
+            last_error = error
+        except (requests.RequestException, ValueError) as error:
+            last_error = error
+        if attempt + 1 == REQUEST_ATTEMPTS:
+            raise last_error
+        time.sleep(2 ** attempt)
+    raise last_error
 
 
 class WikipediaRevText(object):
@@ -50,8 +87,7 @@ class WikipediaRevText(object):
         return data
 
     def _make_request(self, data):
-        response = requests.post(**data).json()
-        return response
+        return _request_json(requests.post, **data)
 
     def get_rev_wiki_text(self):
         """
@@ -117,8 +153,7 @@ class WikipediaUser(object):
         }
 
     def _make_request(self, data):
-        response = requests.post(**data).json()
-        return response
+        return _request_json(requests.post, **data)
 
     def get_editor_names(self, editor_ids, batch_size=50):
         """
@@ -163,7 +198,7 @@ class WikiWhoRevContent(object):
         self.language = language
 
     def _prepare_request(self, rev_ids=False):
-        ww_api_url = 'https://www.wikiwho.net/{}/api/v1.0.0-beta'.format(self.language)
+        ww_api_url = '{}/{}/api/v1.0.0-beta'.format(WIKIWHO_API_BASE, self.language)
         if rev_ids:
             if self.page_id:
                 url_params = 'page_id/{}'.format(self.page_id)
@@ -183,8 +218,7 @@ class WikiWhoRevContent(object):
                                'token_id': 'false', 'out': 'true', 'in': 'true'}}
 
     def _make_request(self, data):
-        response = requests.get(**data).json()
-        return response
+        return _request_json(requests.get, **data)
 
     def get_revisions_data(self):
         # get revisions-editors
